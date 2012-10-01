@@ -26,9 +26,9 @@ Visualization:
 
 #### Reduce codebase
 
-* Traits is a huge project with **>92,000** lines and < %60 covered by unit-tests.
+* Traits is a huge project with **> 92,000** lines and **< %60** covered by unit-tests.
     
-* Traity is a tiny project < 2,000 lines and > %95 covered by unit-tests.
+* Traity is a tiny project **< 2,000** lines and **> %95** covered by unit-tests.
     
 Traity is designed to remain tiny kernel of stable code which add-ons and extension may be based on top of.
 
