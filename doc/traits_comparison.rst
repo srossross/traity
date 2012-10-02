@@ -1,154 +1,113 @@
-============================================
-A comparison of traity with traits
-============================================
+============================
+Comparison with traits
+============================
 
+My ideal traits's like library.
 
-I propose traity as a new base for 
+traity.events + traity.statics == traity.traits.  
 
-Separation of "Notifications" from "Validation"
-=================================================
+### Objectives
 
+#### Uphold the main principles and philosophy of traits 
 
-Dynamically static attributes
-======================================
-  
-Use static typing and validation ONLY when you need it. 
-Instance properties are not defined in Python! so as a general guideline, 
-we can separate this into a new and separate functionality. 
-
-.. see:: :mod:`traity.tools.instance_properties`_
-
-This will work even for simple python built-in `property` objects::
-
-    from traity.tools.instance_properties import iobject, set_iproperty
+Initialization: 
+    A may optionally have a default value.
     
-    class Obj(iobject):
+Validation:
+    A trait attribute is explicitly typed. 
+    The type of a trait-based attribute is evident in the code, and only values that meet a programmer-specified set of criteria (i.e., the trait definition) can be assigned to that attribute. 
+    
+Deferral: 
+    The value of a trait attribute can be contained either in the defining object or in another object that is deferred to by the trait.
+    
+Notification: 
+    Setting the value of a trait attribute can notify other parts of the program that the value has changed.
+    
+Visualization: 
+    TBD - enaml?
+
+#### Reduce codebase
+
+* Traits is a huge project with **> 92,000** lines and **< %60** covered by unit-tests.
+    
+* Traity is a tiny project **< 2,000** lines and **> %95** covered by unit-tests.
+    
+Traity is designed to remain tiny kernel of stable code which add-ons and extension may be based on top of.
+
+#### Extend the learning curve
+
+It is my feeling that while traits may be a good learning tool for new scientists it's monolithic structure makes it very hard for an advanced programmer to do specialized things. 
+
+Traity is designed from the ground up to be tiny and transparent. Separating event notification from static typing from other more specialized helpers.
+
+#### Python 3
+
+Just mentioning it here. Traity is Python 3 compliant.
+
+### Highlights
+
+```python
+
+# Optional decorator does two things
+# 1. Makes all vproperty's including `trait` picklable. 
+# 2. Allows static listeners to be defined on a class.
+@init_properties
+# Notice that the foo class does not have to inherit from any hastraits base class.
+class Foo(object):
+
+    #attr1 may emit events like changes  
+    attr1 = listenable()
+    
+    #vproperty is a type checking propery.  
+    attr2 = vproperty(type=int)
+    
+    #traits is a subclass of listenable and vproperty
+    attr3 = trait(type=float)
+    
+    def __init__(self):
+        #Optional: Alows listenable and trait properties to emit events. 
+        init_events(self)  
+    
+    @attr3.changed
+    def notify(self, event):
         pass
+```
+
+#### Building back up to traits
+
+As I mentioned before, this is meant to be a tiny implementation and extensions can be built on top if traity. 
+
+Here is an example of how to re-create a simple HasTraits class from traity.
+
+```python
+class Int(trait):
+    def __init__(default=0):
+        trait.__init__(self, type=int, fdefault=lambda self:default)
     
-    def get_x(this):
-       return 1
-        
-    set_iproperty(obj, 'x', property(get_x))
+    # Special method to allow trait to be called with or without parens '()'
+    # Method __init_property__ is invoked when init_properties is called
+    @classmethod
+    def __init_property__(cls, owner, key):
+       int_trait = cls()
+       setattr(owner, key, int_trait)
+       trait.__init_property__(int_trait, owner, key)
     
-    print obj.x
-
-  
-String parser for on_trait_change 
-======================================
-
-* There is no validation for typos. 
-* Why use a parser for  `'a,b,d:d'`?
-
-traity::
-
-   @a.assign
-   @b.assign
-   @d.d.assign
-   def whatever_name_you_want():
-       pass
-
-or ::
+class HasTraitsMeta(type):
+     def __new__(mcs, name, bases, dict):
+        cls = type.__new__(mcs, name, bases, dict)
+        init_properties(cls)
+        return cls
+     
+class HasTraits(object):
+   __metaclass__ = HasTraitsMeta
+   
+   def __init__(**kwargs):
+       self.__dict__.update(kwargs)
+       init_events(self)
+       
+class MyObject(HasTraits):
+    i = Int
     
-    on_trait_change(obj, ('a', 'b', 'c'), handler)
-    
-
-Name mangling to call python classes
-======================================
-
-This is confusing and not Pythonic. By using decorators Python will natively give
-you name errors when objects are not defined::
-
-    class Foo(HasTraits):
-        x = Any()
-        #Error should be _x_changed - this type of typo is hard to track down. 
-        def _y_changed(self, obj):
-            pass
-
-A more discriptive way::
-
-    class Foo(object):
-
-            x = trait()
-    
-            @x.change
-            def any_name(self, event):
-                pass
-
-
-Interfaces
-=============================================
-
-Just use Python's ABC. This is code bloat and should be deprecated. 
-
-Lists
-==================================================
-
-When using list traits an assignment to a list **always** results in a copy. 
-This is not intuitive. Separating
-
-HasTraits instance methods 
-======================================
-
-Too many! Lets hide these to the end user. traity uses the `events` method to get the `HasTraitsInstance Methods`::
-
-    HasTraits.<tab>
-
-    HasTraits.add_class_trait             HasTraits.clone_traits                HasTraits.remove_listener             HasTraits.trait_property_changed
-    HasTraits.add_listener                HasTraits.configure_traits            HasTraits.remove_trait                HasTraits.trait_set
-    HasTraits.add_trait                   HasTraits.copy_traits                 HasTraits.remove_trait_listener       HasTraits.trait_setq
-    HasTraits.add_trait_category          HasTraits.copyable_trait_names        HasTraits.reset_traits                HasTraits.trait_subclasses
-    HasTraits.add_trait_listener          HasTraits.default_traits_view         HasTraits.set                         HasTraits.trait_view
-    HasTraits.all_trait_names             HasTraits.edit_traits                 HasTraits.set_trait_dispatch_handle   HasTraits.trait_view_elements
-    HasTraits.base_trait                  HasTraits.editable_traits             HasTraits.sync_trait                  HasTraits.trait_views
-    HasTraits.class_default_traits_view   HasTraits.get                         HasTraits.trait                       HasTraits.traits
-    HasTraits.class_editable_traits       HasTraits.has_traits_interface        HasTraits.trait_context               HasTraits.traits_init
-    HasTraits.class_trait_names           HasTraits.mro                         HasTraits.trait_get                   HasTraits.traits_inited
-    HasTraits.class_trait_view            HasTraits.on_trait_change             HasTraits.trait_items_event           HasTraits.validate_trait
-    HasTraits.class_trait_view_elements   HasTraits.on_trait_event              HasTraits.trait_monitor               HasTraits.wrappers
-    HasTraits.class_traits                HasTraits.print_traits                HasTraits.trait_names                 asdf
-
-traity does not even require a class that has traits to be a sub-class of hastraits::
-
-    class Obj(any_base):
-    
-        x = trait()
-        
-        #Only required if you want traits to be listenable.
-        def __init__(self): init_events(self)
-        
-    #Only required if you want traits to be pickelable and/or has statically defined @change listeners.
-    init_properties(Obj)
-
-
-HasTraits Metaclass bases
-======================================
-
-Every once in a great while integrating traits with another package whit Metaclasses can be a pain. traity only requires an optional class decorator. 
-and this has no conflicts with any object Metaclass.
-
-
-Consistency
-=================================================
-
-`Int` and `Int()` are not the same. The logic to do this should be an added functionality (if that) not an inseparable component. 
-
-Attribute-specific Handler Signatures
-=================================================
-
-The core of traits uses introspection to determine how to call an event handler. 
-
-    * _name_changed()
-    * _name_changed(new)
-    * _name_changed(old, new)
-    * _name_changed(name, old, new)
-
-The core of `traity.events` only allows one function signature. `_name_changed(event)`
-
-Restricting the attributes on classes
-======================================
-
-Python 
-
-
-
+obj = MyObject(i=1)
+```
 

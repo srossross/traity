@@ -44,6 +44,8 @@ Just mentioning it here. Traity is Python 3 compliant.
 
 ### Highlights
 
+#### Overview
+
 ```python
 
 # Optional decorator does two things
@@ -66,9 +68,72 @@ class Foo(object):
         #Optional: Alows listenable and trait properties to emit events. 
         init_events(self)  
     
-    @attr3.changed
+    @attr3.changed()
     def notify(self, event):
         pass
+```
+
+#### Dispatchers and global listeners
+
+Global global listeners enable fine grained debugging capability.
+
+```python
+
+def print_change_events(event):
+    if event.target[-1] == 'changed':
+        print "event", event
+
+with global_listener(print_change_events):
+    ...
+
+```
+
+Custom dispatchers handle executing event listeners. A dispatcher is a callable object that accepts an
+event and a listener as arguments.
+
+Dispatchers may be added at three levels:
+
+ * On the trait. The dispatcher has the highest priority, any listener watching this trait will be called by the dispatcher.
+ * On the object. Any listener watching any trait on this object will be called by the dispatcher.
+ * Globally. Any listener watching any trait will be called by the dispatcher.
+
+##### Global and object dispatchers
+
+
+```python
+
+#Global dispatcher stores all events in the tocall list
+with queue() as tocall: 
+    #object dispatcher prevents all events on obj2 from being propagated
+    with events(obj2).quiet():
+        obj1.trait1 = 1
+        obj2.trait1 = 1
+
+assert len(tocall) == 1
+```
+
+##### Trait dispatchers
+
+TODO: this is not implemented yet
+
+```python
+
+def my_function(event, handler):
+    print "calling", handler
+    handler(event)
+     
+@init_properties
+class Obj(object):
+
+    trait_attr = trait(type=float)
+    
+    def __init__(self):
+        init_events(self)  
+    
+    @attr3.changed(dispatcher=my_function)
+    def notify(self, event):
+        pass
+
 ```
 
 #### Building back up to traits

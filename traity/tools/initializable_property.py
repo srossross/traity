@@ -14,12 +14,16 @@
 #
 #-------------------------------------------------------------------------------
 '''
-Properties that have knowlede of the container class
+========================================
+Initializable Properties
+========================================
+
+Properties that have knowlede of the container class.
 '''
 
 def init_properties(cls):
     '''
-    class decorator
+    Class decorator calles __init_property__ on all initializable objects defined in a class
     '''
     for key, value in list(cls.__dict__.items()):
         if isinstance(value, initializable):
@@ -27,11 +31,15 @@ def init_properties(cls):
     return cls
 
 class initializable(object):
+    '''
+    
+    '''
     def __init_property__(self, cls, key):
         pass
 
 class persistent_property(initializable):
     '''
+    A persistent property. 
     '''
     def __init__(self):
         self._attr = None
@@ -45,6 +53,15 @@ class persistent_property(initializable):
     
     @property
     def store_key(self):
+        '''
+        This is set the the attribute name.
+        for example:
+        
+        x = persistent_property()
+        
+        repr(x.store_key)
+        '_x_'
+        '''
         if self._store_key is None:
             return '_%s' %hash(self)
         return self._store_key

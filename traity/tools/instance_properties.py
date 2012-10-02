@@ -13,14 +13,43 @@
 #  Author: Sean Ross-Ross
 #
 #-------------------------------------------------------------------------------
+'''
+============================
+Instance properties
+============================
 
+
+Example ::
+
+    class MyObj(iobject): pass
+    
+    def get_x(any):
+        return 1
+        
+    obj = MyObj()
+    
+    set_iproperty(obj, 'x', get_x)
+    
+    print obj.x
+    1
+'''
 def set_iproperty(instance, attr, prop):
+    '''
+    set an instance property of an object 
+    '''
     instance.__instance_properties__[attr] = prop
 
 def get_iproperty(instance, attr):
+    '''
+    get an instance property of an object 
+    '''
+
     return instance.__instance_properties__[attr]
 
 class iobject(object):
+    '''
+    class must be a subclass of iobject to support instance properties
+    '''
     def __init__(self):
         self.__instance_properties__ = {}
         return

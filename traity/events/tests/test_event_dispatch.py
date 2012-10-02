@@ -108,8 +108,8 @@ class Test(unittest.TestCase):
         obj.id1 = 0
         obj2.id1 = 0
         
-        with events(obj2).quiet():
-            with queue() as tocall:
+        with queue() as tocall:
+            with events(obj2).quiet():
                 events(obj).etrigger('any_target')
                 events(obj).etrigger('any_target')
                 events(obj2).etrigger('any_target')

@@ -15,6 +15,7 @@
 #-------------------------------------------------------------------------------
 
 '''
+=============
 Event system
 =============
 
@@ -62,7 +63,6 @@ class Event(object):
         self._kwargs = kwargs
         self.stop = False
         self.dispatcher = dispatcher
-        
     
     @property
     def obj(self):
@@ -100,55 +100,128 @@ class Event(object):
         return Event(snitch, target, dispatcher, **self._kwargs)
     
     def dispatch(self, listener):
+        '''
+        call a listener object
+        '''
         if self.dispatcher:
             self.dispatcher(self, listener)
         elif self.snitch._dispatch_stack_:
             self.snitch._dispatch_stack_[-1](self, listener)
-        elif type(self)._GLOBAL_DISPATCH_:
-            type(self)._GLOBAL_DISPATCH_[-1](self, listener)
-            
         else:
             listener(self)
         
 def add_global_listener(listener, target=None):
+    '''
+    Add a listener to events on all objects.
+    '''
     glbl = Snitch.global_listeners.setdefault(target, [])
     glbl.append(listener)
     
 def remove_global_listener(listener, target=None):
+    '''
+    remove a add_global_listener
+    '''
+
     glbl = Snitch.global_listeners.setdefault(target, [])
     if listener in glbl: 
         glbl.remove(listener)
     
 @contextmanager
 def global_listener(listener, target=None):
+    '''
+    Context manager for global listeners::
+    
+        def print_event(event):
+            print event
+            
+        with global_listener(print_event):
+            ...
+        
+    '''
     add_global_listener(listener, target)
     yield
     remove_global_listener(listener, target)
     
+def add_global_dispatcher(dispatcher):
+    Snitch._GLOBAL_DISPATCHERS_.append(dispatcher)
+    for snitch in Snitch.__instances__:
+        snitch._dispatch_stack_.append(dispatcher)
+
+def pop_global_dispatcher():
+    Snitch._GLOBAL_DISPATCHERS_.pop()
+    for snitch in Snitch.__instances__:
+        snitch._dispatch_stack_.pop()
+
+def remove_global_dispatcher(dispatcher):
+    for snitch in Snitch.__instances__:
+        dstack = snitch._dispatch_stack_
+        if dispatcher in dstack:
+            idx = dstack[::-1].index(dispatcher)
+            del dstack[len(dstack) - idx - 1]
+            
+    dstack = Snitch._GLOBAL_DISPATCHERS_
+    if dispatcher in dstack:
+        idx = dstack[::-1].index(dispatcher)
+        del dstack[len(dstack) - idx - 1]
+            
+
+@contextmanager
+def global_dispatcher(dispatcher):
+    add_global_dispatcher(dispatcher)
+    yield
+    pop_global_dispatcher()
+    
 @contextmanager
 def quiet():
-    Event._GLOBAL_DISPATCH_.append(lambda event, listener: setattr(event, 'stop', True))
+    '''
+    Do not dispatch any events
+    '''
+    dispatcher = lambda event, listener: setattr(event, 'stop', True)
+    add_global_dispatcher(dispatcher)
     yield
-    Event._GLOBAL_DISPATCH_.pop()
+    pop_global_dispatcher()
 
 @contextmanager
 def queue():
+    '''
+    Put all events into a queue.
+    
+    eg::
+    
+        with queue() as todo:
+            ...
+        
+        print "I have cought %i events" % len(todo)
+    '''
+
     todo = []
-    Event._GLOBAL_DISPATCH_.append(lambda event, listener: todo.append((event, listener)))
+    dispatcher = lambda event, listener: todo.append((event, listener))
+    add_global_dispatcher(dispatcher)
     yield todo
-    Event._GLOBAL_DISPATCH_.pop()
+    pop_global_dispatcher()
 
 @contextmanager
 def unique():
-    todo = set()
-    Event._GLOBAL_DISPATCH_.append(lambda event, listener: todo.add((event, listener)))
-    yield
+    '''
+    Only process unique events eg::
     
-    Event._GLOBAL_DISPATCH_.pop()
+        num_calls = 0
+        with global_listener(inc_num_calls):
+            with unique():
+                triggers_event()
+                triggers_event()
+        
+        assert num_calls == 1 
+    
+    '''
+    todo = set()
+    dispatcher = lambda event, listener: todo.add((event, listener))
+    add_global_dispatcher(dispatcher)
+    yield
+    pop_global_dispatcher()
     
     for event, listener in todo:
         event.dispatch(listener)
-    
 
 
 
@@ -156,7 +229,8 @@ class Snitch(object):
     '''
     Snitch object handles events. and propegates them to the object's parents 
     '''
-    _GLOBAL_DISPATCH_ = []
+    __instances__ = weakref.WeakSet()
+    _GLOBAL_DISPATCHERS_ = []
     global_listeners = {}
     def __init__(self, instance):
         self._instance = weakref.ref(instance)
@@ -172,30 +246,43 @@ class Snitch(object):
                 for listener in listeners: 
                     ilisteners.append(MethodType(listener, instance))
                 
-        self._dispatch_stack_ = []
+        self._dispatch_stack_ = list(self._GLOBAL_DISPATCHERS_)
+        self.__instances__.add(self)
+        
+        
+    def add_dispatcher(self, dispatcher):
+        self._dispatch_stack_.append(dispatcher)
+
+    def pop_dispatcher(self):
+        self._dispatch_stack_.pop()
         
     @contextmanager
     def quiet(self, stop=True):
         '''
         Context manager to stop events being propegated.
         '''
-        self._dispatch_stack_.append(lambda event, listener: setattr(event, 'stop', stop))
+        dispatcher = lambda event, listener: setattr(event, 'stop', stop)
+        self.add_dispatcher(dispatcher)
         yield
-        self._dispatch_stack_.pop()
+        self.pop_dispatcher()
         
     @contextmanager
     def queue(self):
         todo = []
-        self._dispatch_stack_.append(lambda event, listener: todo.append((event, listener)))
+        dispatcher = lambda event, listener: todo.append((event, listener))
+        self.add_dispatcher(dispatcher)
         yield todo
-        self._dispatch_stack_.pop()
+        self.pop_dispatcher()
     
     @contextmanager
     def unique(self):
         todo = set()
-        self._dispatch_stack_.append(lambda event, listener: todo.add((event, listener)))
-        yield todo
-        self._dispatch_stack_.pop()
+        dispatcher = lambda event, listener: todo.add((event, listener))
+        
+        self.add_dispatcher(dispatcher)
+        yield
+        self.pop_dispatcher()
+        
         for event, listener in todo:
             event.dispatch(listener)
     
