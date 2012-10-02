@@ -8,20 +8,20 @@ traity.events + traity.statics == traity.traits.
 
 #### Uphold the main principles and philosophy of traits 
 
-Initialization: 
+**Initialization:**
     A may optionally have a default value.
     
-Validation:
+**Validation:**
     A trait attribute is explicitly typed. 
     The type of a trait-based attribute is evident in the code, and only values that meet a programmer-specified set of criteria (i.e., the trait definition) can be assigned to that attribute. 
     
-Deferral: 
+**Deferral:**
     The value of a trait attribute can be contained either in the defining object or in another object that is deferred to by the trait.
     
-Notification: 
+**Notification:**
     Setting the value of a trait attribute can notify other parts of the program that the value has changed.
     
-Visualization: 
+**Visualization:**
     TBD - enaml?
 
 #### Reduce codebase
