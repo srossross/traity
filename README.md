@@ -29,6 +29,9 @@ traity.events + traity.statics == traity.traits.
 * Traits is a huge project with **> 92,000** lines and **< %60** covered by unit-tests.
     
 * Traity is a tiny project **< 2,000** lines and **> %95** covered by unit-tests.
+    * Traity's `event` framework is **< 400** lines of code without comments or doc-strings, and *completely independent* of any other framework.
+    * Traity's `static` framework is **< 200** lines of code without comments or doc-strings, and *completely independent* of any other framework.
+    * Traity's `traits` framework is **< 100** lines of code without comments or doc-strings, and combines `traity.events` and `traity.statics`
     
 Traity is designed to remain tiny kernel of stable code which add-ons and extension may be based on top of.
 
@@ -44,7 +47,7 @@ Just mentioning it here. Traity is Python 3 compliant.
 
 ### Highlights
 
-#### Overview
+#### Basic syntax
 
 ```python
 
@@ -73,6 +76,44 @@ class Foo(object):
         pass
 ```
 
+#### Strong vs. Weak Delegation
+
+Traity introduces a concept of strong delegation
+```python
+
+class Obj(object):
+    attr1 = trait(instance=str)
+    
+    #Strong delegation to attr1.upper, Error checking at class creation.
+    deleg = attr.upper
+    
+    #Weak delegation to attr1.upper, errors only caught when accessed.
+    deleg2 = delegate('attr1', 'upper')
+    
+```
+
+
+#### Strong vs. Weak Notification
+
+```python
+
+@init_properties
+class Obj(object):
+    attr1 = trait(instance=str)
+    
+    def __init__(self): init_events(self)
+    
+    #Strong Notification, attr1 *must* exists at class creation and be a litstenable trait.
+    @attr1.changed()
+    def hello(self, event):
+        print "hello"
+
+    #Weak Notification, attr1 may not even exist, or may be a typo. but no error will ever be raised
+    @on_trait_changed('attr1')
+    def hello(self, event):
+        print "hello"
+
+```
 #### Dispatchers and global listeners
 
 Global global listeners enable fine grained debugging capability.
