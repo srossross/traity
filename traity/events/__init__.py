@@ -29,6 +29,12 @@ from contextlib import contextmanager
 from types import MethodType
 from traity.tools.initializable_property import initializable
 
+class EventError(Exception):
+    pass
+
+class EventCycleError(EventError):
+    pass
+
 def concat_targets(left, right):
     '''
     concatinate targets with target into a tuple.
@@ -227,7 +233,7 @@ def unique():
 
 class Snitch(object):
     '''
-    Snitch object handles events. and propegates them to the object's parents 
+    Snitch object handles events. and propegates them to the object's upstream nodes 
     '''
     __instances__ = weakref.WeakSet()
     _GLOBAL_DISPATCHERS_ = []
@@ -235,7 +241,7 @@ class Snitch(object):
     def __init__(self, instance):
         self._instance = weakref.ref(instance)
 
-        self._parents = weakref.WeakKeyDictionary()
+        self._upstream = weakref.WeakKeyDictionary()
         
         self._listeners = {}
         cls = type(instance)
@@ -309,27 +315,27 @@ class Snitch(object):
         return '<%s for %r>' % (type(self).__name__, self._instance())
     
 
-    def add_parent(self, parent_snitch, target):
+    def add_upstream(self, node, target):
         '''
-        Add a parent
+        Add a upstream connection
         '''
-        self._parents.setdefault(parent_snitch, set()).add(target)
+        self._upstream.setdefault(node, set()).add(target)
             
-    def remove_parent(self, parent_snitch, target):
+    def remove_upstream(self, node, target):
         '''
-        Remove a parent
+        Remove a node from upstream connections
         '''
-        targets = self._parents.get(parent_snitch, set())
+        targets = self._upstream.get(node, set())
         targets.discard(target)
     
     def bubble(self, event):
         '''
-        Propagate this event up to parents connected with 'connect'.
+        Propagate this event up to upstream nodes connected with 'connect'.
         '''
-        for parent, targets in self._parents.items():
+        for node, targets in self._upstream.items():
             for target in targets: 
-                event_new = event.bubble_target(parent, target)
-                parent.trigger(event_new)
+                event_new = event.bubble_target(node, target)
+                node.trigger(event_new)
                 if event_new.stop:
                     event.stop = True
                     return
@@ -355,21 +361,47 @@ class Snitch(object):
         self.listen((target,), listener)
         
     
-def connect(parent, child, target, init=True):
+def _sn_connected(us_snitch, ds_snitch):
     '''
-    Connect two objects together so that events will bubble upward from child to parent.
+    Test if to snitch objects are connected.
     '''
-    child_snitch = events(child)
-    parent_snitch = events(parent)
-    child_snitch.add_parent(parent_snitch, target)
 
-def disconnect(parent, child, target, init=True):
+    if us_snitch is ds_snitch:
+        return True
+    
+    for node in ds_snitch._upstream.keys():
+        if _sn_connected(us_snitch, node):
+            return True
+
+    return False
+    
+def connected(upstream, downstream):
+    '''
+    Test if to objects are connected.
+    '''
+    ds_snitch = events(downstream)
+    us_snitch = events(upstream)
+    
+    return _sn_connected(us_snitch, ds_snitch)
+
+def connect(upstream, downstream, target, init=True):
+    '''
+    Connect two objects together so that events will bubble upstream.
+    '''
+    if connected(downstream, upstream):
+        raise EventCycleError('Can not connect %r to %r' % (upstream, downstream))
+    
+    ds_snitch = events(downstream)
+    us_snitch = events(upstream)
+    ds_snitch.add_upstream(us_snitch, target)
+
+def disconnect(upstream, downstream, target, init=True):
     '''
     Discnnect two objects.
     '''
-    child_snitch = events(child, init)
-    parent_snitch = events(parent, init)
-    child_snitch.remove_parent(parent_snitch, target)
+    ds_snitch = events(downstream, init)
+    us_snitch = events(upstream, init)
+    ds_snitch.remove_upstream(us_snitch, target)
     
 def events(instance, init=False):
     '''

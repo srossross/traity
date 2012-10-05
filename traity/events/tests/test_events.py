@@ -16,7 +16,7 @@
 
 import unittest
 from traity.events import init_events, events, connect, disconnect, \
-    global_listener
+    global_listener, connected, EventCycleError
 import sys
 import gc
 
@@ -158,7 +158,44 @@ class Test(unittest.TestCase):
             events(obj2).etrigger('y')
             self.assertEqual(obj2.seen, 1)
 
+    def test_connected(self):
         
+        obj1 = AnyObject()
+        obj2 = AnyObject()
+        obj3 = AnyObject()
+        
+        init_events(obj1, obj2, obj3)
+        
+        self.assertFalse(connected(obj1, obj2))
+        
+        connect(obj1, obj2, 'attr')
+        self.assertTrue(connected(obj1, obj2))
+        self.assertFalse(connected(obj2, obj1))
+        
+        connect(obj2, obj3, 'attr')
+        self.assertTrue(connected(obj1, obj3))
+        self.assertTrue(connected(obj2, obj3))
+        self.assertFalse(connected(obj3,obj2))
+        self.assertFalse(connected(obj3, obj1))
+        
+    def test_event_cycle(self):
+        
+        obj1 = AnyObject()
+        obj2 = AnyObject()
+        obj3 = AnyObject()
+        
+        init_events(obj1, obj2, obj3)
+        
+        self.assertFalse(connected(obj1, obj2))
+        
+        connect(obj1, obj2, 'attr')
+        connect(obj2, obj3, 'attr')
+
+        with self.assertRaises(EventCycleError):
+            connect(obj3, obj1, 'attr')
+        
+        
+    
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.test_simple']
     unittest.main()
