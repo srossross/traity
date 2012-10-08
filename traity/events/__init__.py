@@ -136,30 +136,48 @@ def remove_global_listener(listener, target=None):
 @contextmanager
 def global_listener(listener, target=None):
     '''
-    Context manager for global listeners::
     
+    :param listener: callable object, signature must be `listener(event)` 
+    :param target: target tuple 
+    
+    Context manager for global listeners ::
+
         def print_event(event):
             print event
             
         with global_listener(print_event):
             ...
         
+    ok
     '''
     add_global_listener(listener, target)
     yield
     remove_global_listener(listener, target)
     
 def add_global_dispatcher(dispatcher):
+    '''
+    Add a dispatcher to the stack. 
+    
+    :param dispatcher: callable object. signature must be `dispatcher(event, listener)`
+    '''
     Snitch._GLOBAL_DISPATCHERS_.append(dispatcher)
     for snitch in Snitch.__instances__:
         snitch._dispatch_stack_.append(dispatcher)
 
 def pop_global_dispatcher():
+    '''
+    remove the last global disopatcher from the stack 
+    '''
     Snitch._GLOBAL_DISPATCHERS_.pop()
     for snitch in Snitch.__instances__:
         snitch._dispatch_stack_.pop()
 
 def remove_global_dispatcher(dispatcher):
+    '''
+    remove the last `dispatcher` from the stack
+     
+    :param dispatcher: specific dispatcher to remove
+    '''
     for snitch in Snitch.__instances__:
         dstack = snitch._dispatch_stack_
         if dispatcher in dstack:
@@ -174,6 +192,16 @@ def remove_global_dispatcher(dispatcher):
 
 @contextmanager
 def global_dispatcher(dispatcher):
+    '''
+    :param dispatcher: callable object. signature must be `dispatcher(event, listener)`
+    
+    Add a global dispatcher in a context::
+    
+        with global_dispatcher(myfunc):
+            #Trigger events
+    
+    ok
+    '''
     add_global_dispatcher(dispatcher)
     yield
     pop_global_dispatcher()
@@ -191,14 +219,14 @@ def quiet():
 @contextmanager
 def queue():
     '''
-    Put all events into a queue.
-    
-    eg::
-    
+    Put all events into a queue. example:: 
+        
         with queue() as todo:
             ...
         
         print "I have cought %i events" % len(todo)
+    
+    this
     '''
 
     todo = []
@@ -220,6 +248,7 @@ def unique():
         
         assert num_calls == 1 
     
+    and how
     '''
     todo = set()
     dispatcher = lambda event, listener: todo.add((event, listener))
@@ -234,7 +263,7 @@ def unique():
 
 class Snitch(object):
     '''
-    Snitch object handles events. and propegates them to the object's upstream nodes 
+    Snitch object handles events. and propegates them to the object's upstream nodes.
     '''
     __instances__ = weakref.WeakSet()
     _GLOBAL_DISPATCHERS_ = []
@@ -258,6 +287,10 @@ class Snitch(object):
         
         
     def add_dispatcher(self, dispatcher):
+        '''
+        
+        :param dispatcher:
+        '''
         self._dispatch_stack_.append(dispatcher)
 
     def pop_dispatcher(self):
@@ -275,6 +308,9 @@ class Snitch(object):
         
     @contextmanager
     def queue(self):
+        '''
+        queue listened to events for this object.
+        '''
         todo = []
         dispatcher = lambda event, listener: todo.append((event, listener))
         self.add_dispatcher(dispatcher)
@@ -283,6 +319,9 @@ class Snitch(object):
     
     @contextmanager
     def unique(self):
+        '''
+        remove duplicate events.
+        '''
         todo = set()
         dispatcher = lambda event, listener: todo.add((event, listener))
         
@@ -294,6 +333,11 @@ class Snitch(object):
             event.dispatch(listener)
     
     def etrigger(self, target, **metadata):
+        '''
+        trigger an event.
+        
+        :param target: only listeners listening to this target will fire 
+        '''
         target = concat_targets(target, None)
         event = Event(self, target, **metadata)
         self.trigger(event)
@@ -321,6 +365,11 @@ class Snitch(object):
                 if event.stop: return
                 
     def trigger(self, event):
+        '''
+        
+        :param event: `Event` object to trigger
+        '''
+        
         self.group_dispatch(self._listeners, event)
         self.group_dispatch(type(self).global_listeners, event)
         self.bubble(event)
@@ -399,7 +448,9 @@ def _sn_connected(us_snitch, ds_snitch):
     
 def connected(upstream, downstream):
     '''
-    Test if to objects are connected.
+    Test if to objects are connected. 
+    
+    .. seealso:: :func:`connect`
     '''
     ds_snitch = events(downstream)
     us_snitch = events(upstream)
@@ -445,6 +496,9 @@ def init_events(*instances):
     
 
 class listenable(initializable):
+    '''
+    listenable property
+    '''
     
     def __init__(self):
         self._listeners = {}

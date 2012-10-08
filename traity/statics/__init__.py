@@ -15,9 +15,6 @@
 #-------------------------------------------------------------------------------
 
 '''
-Static properties - Validation and Defferal
-=============================================
-
 Static properties allow users to define attributes to a class ad class creation.
 
 Unlike python's native `property` descriptor. a vproperty's getter setter and deleter are already defined.  
@@ -103,6 +100,9 @@ from traity.tools.initializable_property import persistent_property
 class NoDefault: pass
 
 class delegate(object):
+    '''
+    Delegate attribute lookup to an inner object
+    '''
     def __init__(self, outer, inner, *chain):
         if chain:
             inner = delegate(inner, *chain)
@@ -111,6 +111,9 @@ class delegate(object):
         
     @property
     def flat(self):
+        '''
+        return the list of delegates as a flat list
+        '''
         if isinstance(self.inner, delegate):
             inners = self.inner.flat
         else:
@@ -160,15 +163,83 @@ class delegate(object):
         return self.delegates_to(attr)
     
     def delegates_to(self, attr):
+        '''
+        Delegate to an inner attribute. can also use getattr method/
+        '''
         delegate = type(self)
         return delegate(self.outer, self.inner.delegates_to(attr))
 
 class vproperty(persistent_property):
     '''
-    Define a static attribute to a class. 
+    
+        
+    :param fget: method to get attribute
+    :param fset: method to set attribute
+    :param fdel: method to delete attribute
+    :param ftype: method to convert type of attribute on assignment
+    :param instance: if given, all assignments to this property must pass an isinstance check.  
+    :param fdefault: method to get attribute if undefined
+    :param type: shorthand for ftype, type may be a basic python type not a method. int, float etc.
+
+    Define a static attribute to a class. Behaves almost exactly the same as Python properties::
+    
+        class Parrot(object):
+            def __init__(self):
+                self._voltage = 100000
+        
+            @vproperty
+            def voltage(self):
+                """Get the current voltage."""
+                return self._voltage
+
+    vproperty defines default fget, fset and fdel::
+    
+        class Parrot(object):
+            def __init__(self):
+                self.voltage = 100000
+        
+            voltage = vproperty()
+            
+    vproperty adds ftype, instance and fdefault::
+        
+        class Parrot(object):
+
+            voltage = vproperty(type=int)
+
+            def __init__(self):
+                self.voltage = 100000
+                #OK
+                self.voltage = '100000'
+                #ValueError 'abc' is not convertable to int. 
+                self.voltage = 'abc'
+        
+    
+    or::
+
+        class Parrot(object):
+
+            voltage = vproperty()
+            
+            @voltage.type
+            def dynamic_range(self, value):
+                return clamp(value, 0, self.max_volts)
+
+    defaults::
+    
+        class Parrot(object):
+
+            voltage = vproperty()
+            
+            @voltage.default
+            def voltage_default(self):
+                return 10000
+                
+    ..
     '''
     _delegate_class_ = delegate
     def __init__(self, fget=None, fset=None, fdel=None, type=None, ftype=None, instance=None, fdefault=None):
+        '''
+        '''
         persistent_property.__init__(self)
         self._getter = self._default_getter if fget is None else fget
         self._setter = self._default_setter if fset is None else fset
@@ -182,6 +253,9 @@ class vproperty(persistent_property):
         self._default = fdefault
         
     def getter(self, value):
+        '''
+        
+        '''
         self._getter = value
         return self
     
@@ -200,7 +274,8 @@ class vproperty(persistent_property):
             @x.type
             def check(self, value):
                ...
-    
+        
+        .
         '''
         self._type = method
         return method

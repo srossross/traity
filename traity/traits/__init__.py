@@ -15,6 +15,8 @@
 #-------------------------------------------------------------------------------
 from traity.tools.initializable_property import initializable
 '''
+fasdf
+
 Traits = Events + Statics
 ====================================
 '''
@@ -141,6 +143,7 @@ def on_trait_change(traits):
         def attr_changed(self, event):
             print 'hello!'
     
+    .
     '''
     
     target = concat_targets(traits, 'changed')
