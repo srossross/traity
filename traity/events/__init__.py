@@ -13,6 +13,7 @@
 #  Author: Sean Ross-Ross
 #
 #-------------------------------------------------------------------------------
+from traity.tools.weak_method import method_ref
 
 '''
 =============
@@ -293,16 +294,29 @@ class Snitch(object):
             event.dispatch(listener)
     
     def etrigger(self, target, **metadata):
-        event = Event(self, (target,), **metadata)
+        target = concat_targets(target, None)
+        event = Event(self, target, **metadata)
         self.trigger(event)
         
     def group_dispatch(self, listeners, event):
         if listeners:
-            for listener in listeners.get(event.target, []):
-                event.dispatch(listener)
+            
+            callbacks = listeners.get(event.target, [])
+            for listener in callbacks:
+                cb = listener() if isinstance(listener, weakref.ref) else listener
+                if cb is None: 
+                    callbacks.remove(listener)
+                    continue
+                
+                event.dispatch(cb)
                 if event.stop: return 
                 
+            callbacks = listeners.get(None, [])
             for listener in listeners.get(None, []):
+                cb = listener() if isinstance(listener, weakref.ref) else listener
+                if cb is None: 
+                    callbacks.remove(listener)
+                    continue
                 event.dispatch(listener)
                 if event.stop: return
                 
@@ -340,12 +354,20 @@ class Snitch(object):
                     event.stop = True
                     return
 
-    def listen(self, target, listener):
+    def listen(self, target, listener, weak=None):
         '''
         Add a listener to listen to events with target 'target'.
         '''
+        
         listeners = self._listeners.setdefault(target , [])
-        listeners.append(listener)
+        if weak:
+            ref = method_ref(listener)
+        elif weak is None and isinstance(listener, MethodType):
+            ref = method_ref(listener)
+        else:
+            ref = listener
+        
+        listeners.append(ref)
             
     def unlisten(self, target, listener=None):
         '''

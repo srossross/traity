@@ -14,8 +14,8 @@
 #
 #-------------------------------------------------------------------------------
 import unittest
-from traity.traits import trait, on_trait_change
-from traity.events import init_events
+from traity.traits import trait, on_trait_change, on_change
+from traity.events import init_events, events, global_listener
 from traity.tools.initializable_property import init_properties
 
 class Test(unittest.TestCase):
@@ -89,7 +89,7 @@ class Test(unittest.TestCase):
         def printme(event):
             a.seen_t = True
         
-        on_trait_change(a, 't', printme)
+        on_change(a, 't', printme)
         
         a.t = 1
         self.assertTrue(a.seen_t)
@@ -150,8 +150,26 @@ class Test(unittest.TestCase):
         self.assertFalse(a.b_seen_c)
 
 
-
-
+    def test_static_listen(self):
+        
+        @init_properties
+        class A(object):
+            
+            @on_trait_change('x')
+            def x_changed(self, evetn):
+                self.y += 1
+            
+        a = A()
+        init_events(a)
+        a.y = 0
+        a.x_changed(None)
+        self.assertEqual(a.y, 1)
+        
+        events(a).etrigger(('x', 'changed'))
+        
+        self.assertEqual(a.y, 2)
+        
+    
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

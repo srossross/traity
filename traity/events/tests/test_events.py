@@ -194,8 +194,51 @@ class Test(unittest.TestCase):
         with self.assertRaises(EventCycleError):
             connect(obj3, obj1, 'attr')
         
+    def test_refcount(self):
+        obj = AnyObject()
+        init_events(obj)
         
-    
+        class F(object):
+            def m(self, event):
+                return
+            
+        f = F()
+        
+        initial = sys.getrefcount(f) 
+        events(obj).listen('a', f.m)
+        new = sys.getrefcount(f)
+        self.assertEqual(initial, new) 
+        events(obj).unlisten('a', f.m)
+
+        events(obj).listen('a', f.m, weak=False)
+        new2 = sys.getrefcount(f)
+        self.assertGreater(new2, initial) 
+        
+        events(obj).unlisten('a', f.m)
+        gc.collect()
+        new = sys.getrefcount(f)
+        self.assertEqual(initial, new) 
+        
+    def test_refcount2(self):
+        obj = AnyObject()
+        init_events(obj)
+        
+        obj.x_called = 0
+        def x(event):
+            print "x_called"
+            obj.x_called += 1
+            
+        self.assertEqual(obj.x_called, 0)
+        events(obj).listen(('a',), x, weak=True)
+        
+        events(obj).etrigger('a')
+        self.assertEqual(obj.x_called, 1)
+        del x
+        events(obj).etrigger('a')
+        
+        self.assertEqual(obj.x_called, 1)
+        
+        
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.test_simple']
     unittest.main()

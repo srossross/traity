@@ -13,6 +13,7 @@
 #  Author: Sean Ross-Ross
 #
 #-------------------------------------------------------------------------------
+from traity.tools.initializable_property import initializable
 '''
 Traits = Events + Statics
 ====================================
@@ -118,17 +119,53 @@ class trait(vproperty, listenable_trait):
         if hasattr(value, '__snitch__'):
             connect(instance, value, self)
 
+class StaticListener(listenable):
+    '''
+    Storage container for an instance method that is being listened to statically
+    '''
+    def __init__(self, function):
+        self.function = function
+        listenable.__init__(self)
+        
+    def __init_property__(self, cls, key):
+        
+        super(StaticListener, self).__init_property__(cls, key)
+        setattr(cls, key, self.function)
+        return self.function
 
-def on_trait_change(obj, traits, function):
+def on_trait_change(traits):
+    '''
+    Statically Register a listener to a class::
+    
+        @on_trait_change('attr')
+        def attr_changed(self, event):
+            print 'hello!'
+    
+    '''
+    
+    target = concat_targets(traits, 'changed')
+    
+    def decorator(func):
+        if not isinstance(func, StaticListener):
+            func = StaticListener(func)
+
+        func.add_listener(target, func.function)
+        
+        return func
+    
+    return decorator
+
+    
+def on_change(instance, traits, function, weak=None):
     '''
     Register a listener to an object.
     
-    :param obj: The object to listen to events for.
     :param traits: either a `string`, `traity.events.listenable`, or a tuple of strings and listenables.  
     :param function: function to call when event with target `target` is triggered. 
+    :param instance: The object to listen to events for.
     '''
     target = concat_targets(traits, 'changed')
-    events(obj).listen(target, function)
+    events(instance).listen(target, function, weak=weak)
     
     
     
