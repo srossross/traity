@@ -225,7 +225,6 @@ class Test(unittest.TestCase):
         
         obj.x_called = 0
         def x(event):
-            print "x_called"
             obj.x_called += 1
             
         self.assertEqual(obj.x_called, 0)
