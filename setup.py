@@ -18,5 +18,13 @@ from setuptools import setup, find_packages
 
 setup(name='traity',
       version='0.0.1',
-      packages=find_packages())
+      description='Extended Python Porperties',
+      packages=find_packages(),
+      author='Sean Ross-Ross',
+      author_email='srossross@enthought.com',
+      url='http://srossross.github.com/traity',
+      classifiers=['Programming Language :: Python :: 2',
+                   'Programming Language :: Python :: 3'],
+      license='BSD',
+      )
 
