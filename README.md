@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/srossross/traity.png)](https://travis-ci.org/srossross/traity)
 
+[Documentation](https://traity.readthedocs.org)
+
 My ideal traits's like library.
 
 traity.events + traity.statics == traity.traits.  
