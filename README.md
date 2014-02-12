@@ -219,3 +219,4 @@ class MyObject(HasTraits):
 obj = MyObject(i=1)
 ```
 
+asdf
