@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/srossross/traity.png)](https://travis-ci.org/srossross/traity)
 
-<a class="foo" href="github-mac://openRepo/https://github.com/Anaconda-Platform/anaconda-build">
+<a class="foo" href="brackish-mac://openRepo/https://github.com/Anaconda-Platform/anaconda-build">
   <img src="https://img.shields.io/badge/Brackish-▶_Run_with_Brackish-green.svg?style=flat-square"/>
 </a>
 
